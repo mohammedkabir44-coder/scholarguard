@@ -60,8 +60,8 @@
 
     <script>
         const API = "https://scholarguard.onrender.com";
-        let token = localStorage.getItem("sg_token");
-        let email = localStorage.getItem("sg_email");
+        let token = localStorage.getItem("scholarguard_token");
+        let email = localStorage.getItem("scholarguard_user");
 
         const loginSec = document.getElementById("login-section");
         const dashboardSec = document.getElementById("dashboard-section");
@@ -95,9 +95,9 @@
             const data = await res.json();
             if (res.ok) {
                 token = data.access_token;
-                email = data.user.email;
-                localStorage.setItem("sg_token", token);
-                localStorage.setItem("sg_email", email);
+                const userData = data.user;
+                localStorage.setItem("scholarguard_token", token);
+                localStorage.setItem("scholarguard_user", JSON.stringify(userData));
                 showDashboard();
             } else {
                 msg.innerText = data.detail || "Authentication failed";
@@ -172,8 +172,8 @@
         }
 
         document.getElementById("logout-btn").addEventListener("click", () => {
-            localStorage.removeItem("sg_token");
-            localStorage.removeItem("sg_email");
+            localStorage.removeItem("scholarguard_token");
+            localStorage.removeItem("scholarguard_user");
             location.reload();
         });
 

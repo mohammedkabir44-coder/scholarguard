@@ -74,16 +74,12 @@ def get_current_user(token: str = Query(...), db: Session = Depends(get_db)) -> 
 def root():
     return {"message": "ScholarGuard API is running"}
 
-@app.post("/api/register")
-def register(request: BaseModel, db: Session = Depends(get_db)):
-    pass
-
 class RegisterRequest(BaseModel):
     email: str
     password: str
 
 @app.post("/api/register")
-def register_real(request: RegisterRequest, db: Session = Depends(get_db)):
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
     try:
         existing_user = db.query(User).filter(User.email == request.email).first()
         if existing_user: raise HTTPException(status_code=400, detail="Email already registered")

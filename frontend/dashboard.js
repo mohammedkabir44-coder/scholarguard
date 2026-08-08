@@ -128,12 +128,12 @@ function showToast(message, type = 'info') {
 // ========================================
 
 /**
- * Handle file upload
+ * Upload file to backend
  * @param {File} file - File object to upload
  */
 async function uploadFile(file) {
     // Validate file
-    const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt', '.rtf', '.odt'];
+    const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt', '.rtf'];
     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
     
     if (!allowedExtensions.includes(fileExtension)) {
@@ -155,11 +155,12 @@ async function uploadFile(file) {
         // Prepare form data
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('assignment_id', '1'); // Default assignment ID
-        formData.append('student_id', '1'); // Default student ID
+        
+        // Get token for authentication
+        const token = localStorage.getItem('scholarguard_token');
         
         // Upload file
-        const response = await fetch(UPLOAD_URL, {
+        const response = await fetch(`${UPLOAD_URL}?token=${token}`, {
             method: 'POST',
             body: formData
         });
@@ -204,7 +205,8 @@ async function uploadFile(file) {
  */
 async function fetchReports(skip = 0, limit = 100) {
     try {
-        const response = await fetch(`${REPORTS_URL}?skip=${skip}&limit=${limit}`);
+        const token = localStorage.getItem('scholarguard_token');
+        const response = await fetch(`${REPORTS_URL}?token=${token}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch reports');
@@ -215,7 +217,7 @@ async function fetchReports(skip = 0, limit = 100) {
     } catch (error) {
         console.error('Error fetching reports:', error);
         showToast('Failed to load reports', 'error');
-        return { total: 0, reports: [] };
+        return { total_reports: 0, reports: [] };
     }
 }
 
@@ -253,23 +255,23 @@ function displayReports(reports) {
     reportsTableBody.innerHTML = reports.map(report => `
         <tr>
             <td>${report.id}</td>
-            <td>${report.submission_id}</td>
+            <td>${report.file_name}</td>
             <td>
-                <span class="score-badge ${getScoreClass(report.similarity_score)}">
-                    ${report.similarity_score.toFixed(1)}%
+                <span class="score-badge ${getScoreClass(report.similarity_score || 0)}">
+                    ${(report.similarity_score || 0).toFixed(1)}%
                 </span>
             </td>
             <td>
-                <span class="score-badge ${getScoreClass(report.ai_risk_score)}">
-                    ${report.ai_risk_score.toFixed(1)}%
+                <span class="score-badge ${getScoreClass(report.ai_risk_score || 0)}">
+                    ${(report.ai_risk_score || 0).toFixed(1)}%
                 </span>
             </td>
             <td>
-                <span class="risk-badge ${getRiskClass(report.risk_level)}">
-                    ${report.risk_level}
+                <span class="risk-badge ${getRiskClass('low')}">
+                    Low
                 </span>
             </td>
-            <td>${formatDate(report.created_at)}</td>
+            <td>${formatDate(report.uploaded_at)}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-icon" onclick="viewReport(${report.id})" title="View Details">
@@ -312,19 +314,15 @@ function updateStats(reports) {
  */
 async function viewReport(reportId) {
     try {
-        const response = await fetch(`${REPORTS_URL}/${reportId}`);
+        const token = localStorage.getItem('scholarguard_token');
+        const response = await fetch(`${REPORTS_URL}/${reportId}?token=${token}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch report details');
         }
         
         const data = await response.json();
-        const report = data.report;
-        
-        // Parse JSON fields
-        const similarityDetails = JSON.parse(report.similarity_details || '{}');
-        const aiEvidence = JSON.parse(report.ai_evidence_json || '{}');
-        const recommendations = JSON.parse(report.recommendations || '[]');
+        const report = data;
         
         // Display report in modal
         modalBody.innerHTML = `
@@ -337,89 +335,37 @@ async function viewReport(reportId) {
                             <span>${report.id}</span>
                         </div>
                         <div class="info-item">
-                            <label>Submission ID:</label>
-                            <span>${report.submission_id}</span>
+                            <label>File Name:</label>
+                            <span>${report.file_name}</span>
                         </div>
                         <div class="info-item">
-                            <label>Created:</label>
-                            <span>${formatDate(report.created_at)}</span>
+                            <label>Uploaded:</label>
+                            <span>${formatDate(report.uploaded_at)}</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="report-section">
-                    <h3>Plagiarism Analysis</h3>
-                    <div class="score-display">
-                        <div class="score-circle ${getScoreClass(report.similarity_score)}">
-                            <span class="score-value">${report.similarity_score.toFixed(1)}%</span>
-                            <span class="score-label">Similarity</span>
-                        </div>
-                    </div>
+                    <h3>Analysis Results</h3>
                     <div class="info-grid">
                         <div class="info-item">
-                            <label>Sources Found:</label>
-                            <span>${report.similarity_sources_count || 0}</span>
+                            <label>Similarity Score:</label>
+                            <span class="score-badge ${getScoreClass(report.similarity_score || 0)}">${(report.similarity_score || 0).toFixed(1)}%</span>
+                        </div>
+                        <div class="info-item">
+                            <label>AI Risk Score:</label>
+                            <span class="score-badge ${getScoreClass(report.ai_risk_score || 0)}">${(report.ai_risk_score || 0).toFixed(1)}%</span>
+                        </div>
+                        <div class="info-item">
+                            <label>AI Confidence:</label>
+                            <span class="risk-badge ${getRiskClass('low')}">${report.ai_confidence || 'N/A'}</span>
                         </div>
                     </div>
-                    ${similarityDetails.sources && similarityDetails.sources.length > 0 ? `
-                        <div class="sources-list">
-                            <h4>Top Sources:</h4>
-                            <ul>
-                                ${similarityDetails.sources.map(source => `
-                                    <li>
-                                        <a href="${source.url}" target="_blank">${source.url}</a>
-                                        <span class="match-percentage">${source.match_percentage}% match</span>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
                 </div>
                 
                 <div class="report-section">
-                    <h3>AI Content Detection</h3>
-                    <div class="score-display">
-                        <div class="score-circle ${getScoreClass(report.ai_risk_score)}">
-                            <span class="score-value">${report.ai_risk_score.toFixed(1)}%</span>
-                            <span class="score-label">AI Risk</span>
-                        </div>
-                    </div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Risk Level:</label>
-                            <span class="risk-badge ${getRiskClass(report.ai_risk_level)}">${report.ai_risk_level}</span>
-                        </div>
-                    </div>
-                    ${aiEvidence.indicators && aiEvidence.indicators.length > 0 ? `
-                        <div class="evidence-list">
-                            <h4>Indicators:</h4>
-                            <ul>
-                                ${aiEvidence.indicators.map(indicator => `<li>${indicator}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="report-section">
-                    <h3>Overall Assessment</h3>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Overall Risk Score:</label>
-                            <span class="score-badge ${getScoreClass(report.overall_risk_score)}">${report.overall_risk_score.toFixed(1)}%</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Risk Level:</label>
-                            <span class="risk-badge ${getRiskClass(report.risk_level)}">${report.risk_level}</span>
-                        </div>
-                    </div>
-                    ${recommendations.length > 0 ? `
-                        <div class="recommendations">
-                            <h4>Recommendations:</h4>
-                            <ul>
-                                ${recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
+                    <h3>Recommendation</h3>
+                    <p>${report.recommendation || 'No recommendation available'}</p>
                 </div>
             </div>
         `;

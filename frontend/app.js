@@ -155,7 +155,7 @@ function updateNavMenu() {
 /**
  * Register new user
  */
-async function registerUser(email, password, fullName) {
+async function registerUser(email, password) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/register`, {
             method: 'POST',
@@ -164,8 +164,7 @@ async function registerUser(email, password, fullName) {
             },
             body: JSON.stringify({
                 email: email,
-                password: password,
-                full_name: fullName
+                password: password
             })
         });
         
@@ -439,11 +438,10 @@ async function uploadFile(file) {
         loadingSpinner.classList.add('active');
         hideStatus();
         
-        const authHeader = getAuthHeader();
+        const token = getToken();
         
-        const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        const response = await fetch(`${API_BASE_URL}/api/upload?token=${token}`, {
             method: 'POST',
-            headers: authHeader,
             body: formData
         });
         
@@ -497,11 +495,9 @@ async function uploadFile(file) {
  */
 async function fetchReports() {
     try {
-        const authHeader = getAuthHeader();
+        const token = getToken();
         
-        const response = await fetch(`${API_BASE_URL}/api/reports`, {
-            headers: authHeader
-        });
+        const response = await fetch(`${API_BASE_URL}/api/reports?token=${token}`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -528,10 +524,10 @@ async function fetchReports() {
  */
 async function downloadPDF(submissionId) {
     try {
-        const authHeader = getAuthHeader();
+        const token = getToken();
         
         // Open PDF in new tab/window
-        const url = `${API_BASE_URL}/api/reports/${submissionId}/pdf`;
+        const url = `${API_BASE_URL}/api/reports/${submissionId}/pdf?token=${token}`;
         window.open(url, '_blank');
         
     } catch (error) {
@@ -669,7 +665,6 @@ async function handleLoginSubmit(e) {
 async function handleRegisterSubmit(e) {
     e.preventDefault();
     
-    const fullName = document.getElementById('registerName').value;
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
     
@@ -679,7 +674,7 @@ async function handleRegisterSubmit(e) {
         submitBtn.textContent = 'Creating account...';
         submitBtn.disabled = true;
         
-        await registerUser(email, password, fullName);
+        await registerUser(email, password);
         
         showStatus('Account created successfully! Welcome to ScholarGuard.', 'success');
         showDashboard();
