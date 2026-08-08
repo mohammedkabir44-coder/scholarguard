@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScholarGuard - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-2xl bg-white shadow-xl rounded-xl p-8 space-y-6 my-8">
+        <div class="text-center border-b pb-4">
+            <h1 class="text-3xl font-bold text-blue-600">ScholarGuard</h1>
+            <p class="text-gray-500 mt-1">Academic Integrity Platform</p>
+        </div>
+
+        <!-- LOGIN SECTION -->
+        <div id="login-section" class="space-y-4 max-w-sm mx-auto">
+            <h2 class="text-xl font-semibold text-center">Teacher Login</h2>
+            <input type="email" id="email" placeholder="Email" value="test@test.com" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="password" id="password" placeholder="Password" value="password123" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <button id="login-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">Login / Register</button>
+            <p id="login-msg" class="text-center text-sm text-red-500 hidden"></p>
+        </div>
+
+        <!-- DASHBOARD SECTION (Hidden until logged in) -->
+        <div id="dashboard-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg">
+                <span class="text-green-700 font-medium">Welcome, <span id="user-email"></span></span>
+                <button id="logout-btn" class="text-xs text-red-500 underline">Logout</button>
+            </div>
+            
+            <!-- UPLOAD FORM -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
+                <h2 class="text-lg font-semibold text-blue-800">📤 Upload New Assignment</h2>
+                <label for="file-input" class="block text-sm font-medium text-gray-700">Select Assignment File</label>
+                <input type="file" id="file-input" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-blue-100"/>
+                <button id="upload-btn" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition disabled:bg-gray-400" disabled>Analyze Document</button>
+            </div>
+
+            <!-- CURRENT RESULTS -->
+            <div id="results" class="hidden p-4 bg-yellow-50 rounded-lg border border-yellow-200 space-y-2">
+                <h3 class="font-bold text-lg text-yellow-800">✨ Latest Analysis Complete</h3>
+                <p><strong>File:</strong> <span id="res-file"></span></p>
+                <p><strong>Similarity:</strong> <span id="res-sim" class="font-bold"></span></p>
+                <p><strong>AI Risk:</strong> <span id="res-ai" class="font-bold"></span></p>
+                <p><strong>Recommendation:</strong> <span id="res-rec" class="italic"></span></p>
+            </div>
+
+            <!-- HISTORY DASHBOARD -->
+            <div class="mt-8">
+                <h2 class="text-xl font-semibold border-b pb-2 mb-4">📁 Past Reports</h2>
+                <ul id="history-list" class="space-y-3 max-h-96 overflow-y-auto">
+                    <li><p class="text-gray-500 text-center italic">Loading history...</p></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000";
+        let token = localStorage.getItem("sg_token");
+        let email = localStorage.getItem("sg_email");
+
+        const loginSec = document.getElementById("login-section");
+        const dashboardSec = document.getElementById("dashboard-section");
+        const fileInput = document.getElementById("file-input");
+        const uploadBtn = document.getElementById("upload-btn");
+
+        if (token && email) showDashboard();
+
+        fileInput.addEventListener("change", () => {
+            uploadBtn.disabled = fileInput.files.length === 0;
+        });
+
+        // LOGIN
+        document.getElementById("login-btn").addEventListener("click", async () => {
+            const emailVal = document.getElementById("email").value;
+            const passVal = document.getElementById("password").value;
+            const msg = document.getElementById("login-msg");
+
+            let res = await fetch(`${API}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailVal, password: passVal })
+            });
+
+            if (!res.ok) {
+                res = await fetch(`${API}/api/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: emailVal, password: passVal })
+                });
+            }
+
+            const data = await res.json();
+            if (res.ok) {
+                token = data.access_token;
+                email = data.user.email;
+                localStorage.setItem("sg_token", token);
+                localStorage.setItem("sg_email", email);
+                showDashboard();
+            } else {
+                msg.innerText = data.detail || "Login failed";
+                msg.classList.remove("hidden");
+            }
+        });
+
+        // UPLOAD
+        uploadBtn.addEventListener("click", async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            uploadBtn.innerText = "Analyzing...";
+            uploadBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const res = await fetch(`${API}/api/upload?token=${token}`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById("res-file").innerText = data.file_name;
+                    document.getElementById("res-sim").innerText = `${data.similarity_score}%`;
+                    document.getElementById("res-ai").innerText = `${data.ai_risk_score}%`;
+                    document.getElementById("res-rec").innerText = data.recommendation;
+                    document.getElementById("results").classList.remove("hidden");
+                    
+                    // Refresh the history list to include the new file
+                    loadHistory();
+                } else {
+                    alert("Error: " + (data.detail || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Network error. Is the backend running?");
+            } finally {
+                uploadBtn.innerText = "Analyze Document";
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // LOAD HISTORY
+        async function loadHistory() {
+            const historyList = document.getElementById("history-list");
+            historyList.innerHTML = ""; 
+
+            try {
+                const res = await fetch(`${API}/api/reports?token=${token}`);
+                const data = await res.json();
+                
+                if (res.ok && data.reports.length > 0) {
+                    data.reports.forEach(report => {
+                        const li = document.createElement("li");
+                        li.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col space-y-2";
+                        
+                        // Format the date nicely
+                        const date = new Date(report.uploaded_at).toLocaleDateString();
+                        
+                        li.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-gray-800 truncate max-w-[200px]" title="${report.file_name}">${report.file_name}</span>
+                                <span class="text-xs text-gray-500">${date}</span>
+                            </div>
+                            <div class="flex gap-4 text-sm">
+                                <span class="text-blue-600">Similarity: <b>${report.similarity_score}%</b></span>
+                                <span class="text-purple-600">AI Risk: <b>${report.ai_risk_score}%</b></span>
+                            </div>
+                            <a href="${API}/api/reports/${report.id}/pdf?token=${token}" target="_blank" class="text-center bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">Download PDF Report</a>
+                        `;
+                        historyList.appendChild(li);
+                    });
+                } else {
+                    historyList.innerHTML = '<li><p class="text-gray-500 text-center italic">No past reports found.</p></li>';
+                }
+            } catch (err) {
+                console.error("Failed to load history", err);
+            }
+        }
+
+        // LOGOUT
+        document.getElementById("logout-btn").addEventListener("click", () => {
+            localStorage.removeItem("sg_token");
+            localStorage.removeItem("sg_email");
+            location.reload();
+        });
+
+        function showDashboard() {
+            loginSec.classList.add("hidden");
+            dashboardSec.classList.remove("hidden");
+            document.getElementById("user-email").innerText = email;
+            loadHistory(); // Fetch past reports on load
+        }
+    </script>
+</body>
+</html>
