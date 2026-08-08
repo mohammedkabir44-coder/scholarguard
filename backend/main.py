@@ -5,6 +5,7 @@ Academic Integrity Platform - Commercial-Ready SaaS
 
 import os
 import hashlib
+import bcrypt
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,7 +19,6 @@ from typing import Optional
 import shutil
 import uuid
 import jwt
-from passlib.context import CryptContext
 from fpdf import FPDF
 
 from database import get_db, init_db, engine, Base
@@ -26,7 +26,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="2.0.0")
+app = FastAPI(title="ScholarGuard API", version="2.0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,7 +40,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@scholarguard.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@12345")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 UPLOAD_FOLDER = "uploads"
 if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
@@ -51,11 +50,11 @@ Base.metadata.create_all(bind=engine)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     pwd_bytes = hashlib.sha256(plain_password.encode("utf-8")).hexdigest().encode("utf-8")
-    return pwd_context.verify(pwd_bytes, hashed_password)
+    return bcrypt.checkpw(pwd_bytes, hashed_password.encode("utf-8"))
 
 def get_password_hash(password: str) -> str:
     pwd_bytes = hashlib.sha256(password.encode("utf-8")).hexdigest().encode("utf-8")
-    return pwd_context.hash(pwd_bytes)
+    return bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode("utf-8")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -96,7 +95,7 @@ def seed_admin():
 
 @app.get("/")
 def root():
-    return {"message": "ScholarGuard API is running", "version": "2.0.0"}
+    return {"message": "ScholarGuard API is running", "version": "2.0.1"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -186,7 +185,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API v2.0 Starting...")
+    print("ScholarGuard API v2.0.1 Starting...")
     print(f"JWT Secret: {'Configured' if SECRET_KEY != 'scholarguard-secret-key-change-in-production-2025' else 'Using default'}")
     print("=" * 60)
     seed_admin()
