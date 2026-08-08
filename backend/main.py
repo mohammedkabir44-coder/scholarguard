@@ -1,9 +1,10 @@
-"""
+﻿"""
 ScholarGuard API
 Academic Integrity Platform - Commercial-Ready SaaS
 """
 
 import os
+import hashlib
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -29,7 +30,7 @@ app = FastAPI(title="ScholarGuard API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500", "http://127.0.0.1:8000", "*", "http://localhost:8000"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -47,10 +48,12 @@ if not os.path.exists(PDF_FOLDER): os.makedirs(PDF_FOLDER)
 Base.metadata.create_all(bind=engine)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    pwd_bytes = hashlib.sha256(plain_password.encode("utf-8")).hexdigest().encode("utf-8")
+    return pwd_context.verify(pwd_bytes, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    pwd_bytes = hashlib.sha256(password.encode("utf-8")).hexdigest().encode("utf-8")
+    return pwd_context.hash(pwd_bytes)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -83,7 +86,7 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     try:
         existing_user = db.query(User).filter(User.email == request.email).first()
         if existing_user: raise HTTPException(status_code=400, detail="Email already registered")
-        hashed_password = get_password_hash(request.password[:72])
+        hashed_password = get_password_hash(request.password)
         new_user = User(email=request.email, hashed_password=hashed_password, full_name="")
         db.add(new_user); db.commit(); db.refresh(new_user)
         return {"message": "User registered", "access_token": create_access_token(data={"sub": request.email}), "user": new_user.to_dict()}
@@ -96,7 +99,7 @@ class LoginRequest(BaseModel):
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
-    if not user or not verify_password(request.password[:72], user.hashed_password):
+    if not user or not verify_password(request.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"message": "Login successful", "access_token": create_access_token(data={"sub": request.email}), "user": user.to_dict()}
 
