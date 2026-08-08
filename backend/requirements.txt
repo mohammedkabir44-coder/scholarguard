@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 sqlalchemy
 pydantic
@@ -10,4 +10,3 @@ fpdf2
 python-dotenv
 docx2txt
 PyPDF2
-pypdf
