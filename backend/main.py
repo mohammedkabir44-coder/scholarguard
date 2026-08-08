@@ -26,7 +26,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="2.0.1")
+app = FastAPI(title="ScholarGuard API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,7 +69,6 @@ def get_current_user(token: str = Query(...), db: Session = Depends(get_db)) -> 
         email: str = payload.get("sub")
         if email is None: raise credentials_exception
     except jwt.PyJWTError: raise credentials_exception
-
     user = db.query(User).filter(User.email == email).first()
     if user is None: raise credentials_exception
     if not user.is_active:
@@ -94,8 +93,7 @@ def seed_admin():
         db.close()
 
 @app.get("/")
-def root():
-    return {"message": "ScholarGuard API is running", "version": "2.0.1"}
+def root(): return {"message": "ScholarGuard API Premium v3.0", "version": "3.0.0"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -142,20 +140,33 @@ async def upload_assignment(file: UploadFile = File(...), current_user: User = D
         allowed = [".pdf", ".docx", ".doc", ".txt", ".rtf"]
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in allowed: raise HTTPException(400, "File type not allowed")
-
         sub_id = str(uuid.uuid4())[:8]
         file_path = os.path.join(UPLOAD_FOLDER, f"{sub_id}_{file.filename}")
-
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-
         text = extract_text_from_file(file_path)
         analysis = analyze_document(text, file.filename)
-
-        sub = Submission(user_id=current_user.id, file_name=file.filename, similarity_score=analysis["similarity_score"], ai_risk_score=analysis["ai_risk_score"], ai_confidence=analysis["ai_confidence"], recommendation=analysis["recommendation"], matched_sources=analysis["matched_sources"], text_content=text)
+        
+        sub = Submission(
+            user_id=current_user.id, file_name=file.filename, 
+            similarity_score=analysis["similarity_score"], ai_risk_score=analysis["ai_risk_score"], 
+            ai_confidence=analysis["ai_confidence"], recommendation=analysis["recommendation"], 
+            matched_sources=analysis["matched_sources"], text_content=text,
+            word_count=analysis["word_count"], sentence_count=analysis["sentence_count"],
+            burstiness_score=analysis["burstiness_score"], vocabulary_richness=analysis["vocabulary_richness"],
+            improvement_tips=analysis["improvement_tips"]
+        )
         db.add(sub); db.commit(); db.refresh(sub)
-
-        return {"id": sub.id, "file_name": sub.file_name, "uploaded_at": sub.uploaded_at.isoformat(), "similarity_score": sub.similarity_score, "ai_risk_score": sub.ai_risk_score, "ai_confidence": sub.ai_confidence, "status": "completed", "recommendation": sub.recommendation, "matched_sources": sub.matched_sources}
+        
+        return {
+            "id": sub.id, "file_name": sub.file_name, "uploaded_at": sub.uploaded_at.isoformat(),
+            "similarity_score": sub.similarity_score, "ai_risk_score": sub.ai_risk_score, 
+            "ai_confidence": sub.ai_confidence, "status": "completed",
+            "word_count": sub.word_count, "sentence_count": sub.sentence_count,
+            "burstiness_score": sub.burstiness_score, "vocabulary_richness": sub.vocabulary_richness,
+            "recommendation": sub.recommendation, "matched_sources": sub.matched_sources,
+            "improvement_tips": sub.improvement_tips
+        }
     except HTTPException: raise
     except Exception as e: print("UPLOAD ERROR:", e); raise HTTPException(500, str(e))
 
@@ -168,16 +179,43 @@ def get_reports(current_user: User = Depends(get_current_user), db: Session = De
 def download_report_pdf(submission_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sub = db.query(Submission).filter(Submission.id == submission_id, Submission.user_id == current_user.id).first()
     if not sub: raise HTTPException(404, "Not found")
-
+    
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, f"ScholarGuard Report: {sub.file_name}", 0, 1)
+    pdf.set_font("Arial", "B", 20)
+    pdf.cell(0, 15, "ScholarGuard Premium Analysis Report", 0, 1, 'C')
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 6, f"Document: {sub.file_name}", 0, 1)
+    pdf.cell(0, 6, f"Words: {sub.word_count} | Sentences: {sub.sentence_count}", 0, 1)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Core Metrics", 0, 1)
     pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f"Similarity: {sub.similarity_score}%", 0, 1)
-    pdf.cell(0, 10, f"AI Risk: {sub.ai_risk_score}%", 0, 1)
-    pdf.cell(0, 10, f"Recommendation: {sub.recommendation}", 0, 1)
-
+    pdf.cell(0, 8, f"Plagiarism Similarity: {sub.similarity_score}%", 0, 1)
+    pdf.cell(0, 8, f"AI Risk Probability: {sub.ai_risk_score}%", 0, 1)
+    pdf.cell(0, 8, f"Burstiness (Human Variation): {sub.burstiness_score}%", 0, 1)
+    pdf.cell(0, 8, f"Vocabulary Richness: {sub.vocabulary_richness}%", 0, 1)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Improvement Report", 0, 1)
+    pdf.set_font("Arial", "", 11)
+    tips = sub.improvement_tips if sub.improvement_tips else []
+    for tip in tips:
+        pdf.multi_cell(0, 6, f"- {tip}")
+    pdf.ln(5)
+    
+    if sub.matched_sources:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Matched Sources", 0, 1)
+        pdf.set_font("Arial", "", 10)
+        for src in sub.matched_sources:
+            pdf.multi_cell(0, 5, f"Source: {src.get('source', 'Unknown')} | Match: {src.get('match_percent', 0)}%")
+            
     path = os.path.join(PDF_FOLDER, f"report_{sub.id}.pdf")
     pdf.output(path)
     return FileResponse(path, filename=f"report_{sub.id}.pdf", media_type="application/pdf")
@@ -185,8 +223,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API v2.0.1 Starting...")
-    print(f"JWT Secret: {'Configured' if SECRET_KEY != 'scholarguard-secret-key-change-in-production-2025' else 'Using default'}")
+    print("ScholarGuard API Premium v3.0 Starting...")
     print("=" * 60)
     seed_admin()
 
