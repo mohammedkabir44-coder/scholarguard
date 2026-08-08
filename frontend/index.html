@@ -14,27 +14,21 @@
             <p class="text-gray-500 mt-1">Academic Integrity Platform</p>
         </div>
 
-        <!-- AUTH SECTION -->
         <div id="login-section" class="space-y-4 max-w-sm mx-auto">
-            <h2 class="text-xl font-semibold text-center">Teacher Account</h2>
+            <h2 class="text-xl font-semibold text-center">Teacher Login</h2>
             <input type="email" id="email" placeholder="Email address" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
             <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button id="login-btn" class="bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">Login</button>
-                <button id="register-btn" class="bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">Sign Up</button>
-            </div>
-            
+            <button id="login-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">Login</button>
+            <p class="text-center text-xs text-gray-400">Accounts are created by the administrator.</p>
             <p id="login-msg" class="text-center text-sm text-red-500 hidden"></p>
         </div>
 
-        <!-- DASHBOARD SECTION -->
         <div id="dashboard-section" class="space-y-6 hidden">
             <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg">
                 <span class="text-green-700 font-medium">Welcome, <span id="user-email"></span></span>
                 <button id="logout-btn" class="text-xs text-red-500 underline">Logout</button>
             </div>
-            
+
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
                 <h2 class="text-lg font-semibold text-blue-800">📤 Upload New Assignment</h2>
                 <input type="file" id="file-input" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-blue-100"/>
@@ -60,8 +54,8 @@
 
     <script>
         const API = "https://scholarguard.onrender.com";
-        let token = localStorage.getItem("scholarguard_token");
-        let email = localStorage.getItem("scholarguard_user");
+        let token = localStorage.getItem("sg_token");
+        let email = localStorage.getItem("sg_email");
 
         const loginSec = document.getElementById("login-section");
         const dashboardSec = document.getElementById("dashboard-section");
@@ -74,50 +68,34 @@
             uploadBtn.disabled = fileInput.files.length === 0;
         });
 
-        async function handleAuth(action) {
-            const emailVal = document.getElementById("email").value;
-            const passVal = document.getElementById("password").value;
+        document.getElementById("login-btn").addEventListener("click", async () => {
             const msg = document.getElementById("login-msg");
-
             msg.classList.add("hidden");
-            if (!emailVal || !passVal) {
-                msg.innerText = "Please enter both email and password.";
-                msg.classList.remove("hidden");
-                return;
-            }
-
-            const res = await fetch(`${API}/api/${action}`, {
+            const res = await fetch(`${API}/api/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: emailVal, password: passVal })
+                body: JSON.stringify({ email: document.getElementById("email").value, password: document.getElementById("password").value })
             });
-
             const data = await res.json();
             if (res.ok) {
                 token = data.access_token;
-                const userData = data.user;
-                localStorage.setItem("scholarguard_token", token);
-                localStorage.setItem("scholarguard_user", JSON.stringify(userData));
+                email = data.user.email;
+                localStorage.setItem("sg_token", token);
+                localStorage.setItem("sg_email", email);
                 showDashboard();
             } else {
-                msg.innerText = data.detail || "Authentication failed";
+                msg.innerText = data.detail || "Login failed";
                 msg.classList.remove("hidden");
             }
-        }
-
-        document.getElementById("login-btn").addEventListener("click", () => handleAuth("login"));
-        document.getElementById("register-btn").addEventListener("click", () => handleAuth("register"));
+        });
 
         uploadBtn.addEventListener("click", async () => {
             const file = fileInput.files[0];
             if (!file) return;
-
             uploadBtn.innerText = "Analyzing...";
             uploadBtn.disabled = true;
-
             const formData = new FormData();
             formData.append("file", file);
-
             try {
                 const res = await fetch(`${API}/api/upload?token=${token}`, { method: "POST", body: formData });
                 const data = await res.json();
@@ -141,17 +119,15 @@
 
         async function loadHistory() {
             const historyList = document.getElementById("history-list");
-            historyList.innerHTML = ""; 
+            historyList.innerHTML = "";
             try {
                 const res = await fetch(`${API}/api/reports?token=${token}`);
                 const data = await res.json();
-                
                 if (res.ok && data.reports.length > 0) {
                     data.reports.forEach(report => {
                         const li = document.createElement("li");
                         li.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col space-y-2";
                         const date = new Date(report.uploaded_at).toLocaleDateString();
-                        
                         li.innerHTML = `
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-gray-800 truncate max-w-[200px]" title="${report.file_name}">${report.file_name}</span>
@@ -172,8 +148,8 @@
         }
 
         document.getElementById("logout-btn").addEventListener("click", () => {
-            localStorage.removeItem("scholarguard_token");
-            localStorage.removeItem("scholarguard_user");
+            localStorage.removeItem("sg_token");
+            localStorage.removeItem("sg_email");
             location.reload();
         });
 

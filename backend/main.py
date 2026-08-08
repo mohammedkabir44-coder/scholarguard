@@ -26,7 +26,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="1.0.0")
+app = FastAPI(title="ScholarGuard API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +38,8 @@ app.add_middleware(
 SECRET_KEY = os.getenv("SECRET_KEY", "scholarguard-secret-key-change-in-production-2025")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@scholarguard.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@12345")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 UPLOAD_FOLDER = "uploads"
@@ -68,29 +70,33 @@ def get_current_user(token: str = Query(...), db: Session = Depends(get_db)) -> 
         email: str = payload.get("sub")
         if email is None: raise credentials_exception
     except jwt.PyJWTError: raise credentials_exception
-    
+
     user = db.query(User).filter(User.email == email).first()
     if user is None: raise credentials_exception
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
     return user
+
+def get_current_admin(token: str = Query(...), db: Session = Depends(get_db)) -> User:
+    user = get_current_user(token, db)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+def seed_admin():
+    db = next(get_db())
+    try:
+        admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()
+        if not admin:
+            db.add(User(email=ADMIN_EMAIL, hashed_password=get_password_hash(ADMIN_PASSWORD), full_name="Administrator", role="admin", is_active=True))
+            db.commit()
+            print(f"Admin account created: {ADMIN_EMAIL}")
+    finally:
+        db.close()
 
 @app.get("/")
 def root():
-    return {"message": "ScholarGuard API is running"}
-
-class RegisterRequest(BaseModel):
-    email: str
-    password: str
-
-@app.post("/api/register")
-def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    try:
-        existing_user = db.query(User).filter(User.email == request.email).first()
-        if existing_user: raise HTTPException(status_code=400, detail="Email already registered")
-        hashed_password = get_password_hash(request.password)
-        new_user = User(email=request.email, hashed_password=hashed_password, full_name="")
-        db.add(new_user); db.commit(); db.refresh(new_user)
-        return {"message": "User registered", "access_token": create_access_token(data={"sub": request.email}), "user": new_user.to_dict()}
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "ScholarGuard API is running", "version": "2.0.0"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -101,7 +107,35 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.email).first()
     if not user or not verify_password(request.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
     return {"message": "Login successful", "access_token": create_access_token(data={"sub": request.email}), "user": user.to_dict()}
+
+class AdminCreateUser(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/admin/users")
+def admin_create_user(request: AdminCreateUser, admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == request.email).first()
+    if existing: raise HTTPException(status_code=400, detail="Email already exists")
+    new_user = User(email=request.email, hashed_password=get_password_hash(request.password), full_name="", role="user", is_active=True)
+    db.add(new_user); db.commit(); db.refresh(new_user)
+    return {"message": "User created", "user": new_user.to_dict()}
+
+@app.get("/api/admin/users")
+def admin_list_users(admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.id).all()
+    return {"users": [u.to_dict() for u in users]}
+
+@app.post("/api/admin/users/{user_id}/toggle")
+def admin_toggle_user(user_id: int, admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(status_code=404, detail="User not found")
+    if user.role == "admin": raise HTTPException(status_code=400, detail="Cannot disable an admin account")
+    user.is_active = not user.is_active
+    db.commit()
+    return {"message": "User updated", "user": user.to_dict()}
 
 @app.post("/api/upload")
 async def upload_assignment(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -109,19 +143,19 @@ async def upload_assignment(file: UploadFile = File(...), current_user: User = D
         allowed = [".pdf", ".docx", ".doc", ".txt", ".rtf"]
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in allowed: raise HTTPException(400, "File type not allowed")
-        
+
         sub_id = str(uuid.uuid4())[:8]
         file_path = os.path.join(UPLOAD_FOLDER, f"{sub_id}_{file.filename}")
-        
+
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
+
         text = extract_text_from_file(file_path)
         analysis = analyze_document(text, file.filename)
-        
+
         sub = Submission(user_id=current_user.id, file_name=file.filename, similarity_score=analysis["similarity_score"], ai_risk_score=analysis["ai_risk_score"], ai_confidence=analysis["ai_confidence"], recommendation=analysis["recommendation"], matched_sources=analysis["matched_sources"], text_content=text)
         db.add(sub); db.commit(); db.refresh(sub)
-        
+
         return {"id": sub.id, "file_name": sub.file_name, "uploaded_at": sub.uploaded_at.isoformat(), "similarity_score": sub.similarity_score, "ai_risk_score": sub.ai_risk_score, "ai_confidence": sub.ai_confidence, "status": "completed", "recommendation": sub.recommendation, "matched_sources": sub.matched_sources}
     except HTTPException: raise
     except Exception as e: print("UPLOAD ERROR:", e); raise HTTPException(500, str(e))
@@ -135,7 +169,7 @@ def get_reports(current_user: User = Depends(get_current_user), db: Session = De
 def download_report_pdf(submission_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sub = db.query(Submission).filter(Submission.id == submission_id, Submission.user_id == current_user.id).first()
     if not sub: raise HTTPException(404, "Not found")
-    
+
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -144,7 +178,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     pdf.cell(0, 10, f"Similarity: {sub.similarity_score}%", 0, 1)
     pdf.cell(0, 10, f"AI Risk: {sub.ai_risk_score}%", 0, 1)
     pdf.cell(0, 10, f"Recommendation: {sub.recommendation}", 0, 1)
-    
+
     path = os.path.join(PDF_FOLDER, f"report_{sub.id}.pdf")
     pdf.output(path)
     return FileResponse(path, filename=f"report_{sub.id}.pdf", media_type="application/pdf")
@@ -152,9 +186,10 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API Starting...")
+    print("ScholarGuard API v2.0 Starting...")
     print(f"JWT Secret: {'Configured' if SECRET_KEY != 'scholarguard-secret-key-change-in-production-2025' else 'Using default'}")
     print("=" * 60)
+    seed_admin()
 
 if __name__ == "__main__":
     import uvicorn
