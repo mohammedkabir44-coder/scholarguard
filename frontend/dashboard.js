@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ScholarGuard Teacher Dashboard
  * Academic Integrity Platform - Frontend Application
  */
@@ -7,7 +7,7 @@
 console.log("ScholarGuard dashboard started");
 
 // Configuration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://scholarguard.onrender.com';
 const UPLOAD_URL = `${API_BASE_URL}/api/upload`;
 const REPORTS_URL = `${API_BASE_URL}/api/reports`;
 
