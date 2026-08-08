@@ -26,7 +26,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="3.1.0")
+app = FastAPI(title="ScholarGuard API", version="3.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -93,7 +93,7 @@ def seed_admin():
         db.close()
 
 @app.get("/")
-def root(): return {"message": "ScholarGuard API Premium v3.1", "version": "3.1.0"}
+def root(): return {"message": "ScholarGuard API Premium v3.2 - Live Reference Engine", "version": "3.2.0"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -117,14 +117,7 @@ class AdminCreateUser(BaseModel):
 def admin_create_user(request: AdminCreateUser, admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == request.email).first()
     if existing: raise HTTPException(status_code=400, detail="Email already exists")
-    new_user = User(
-        email=request.email, 
-        hashed_password=get_password_hash(request.password), 
-        full_name="", 
-        phone_number=request.phone_number,
-        role="user", 
-        is_active=True
-    )
+    new_user = User(email=request.email, hashed_password=get_password_hash(request.password), full_name="", phone_number=request.phone_number, role="user", is_active=True)
     db.add(new_user); db.commit(); db.refresh(new_user)
     return {"message": "User created", "user": new_user.to_dict()}
 
@@ -154,21 +147,19 @@ async def upload_assignment(file: UploadFile = File(...), current_user: User = D
             shutil.copyfileobj(file.file, buffer)
         text = extract_text_from_file(file_path)
         analysis = analyze_document(text, file.filename)
-        
         sub = Submission(
-            user_id=current_user.id, file_name=file.filename, 
-            similarity_score=analysis["similarity_score"], ai_risk_score=analysis["ai_risk_score"], 
-            ai_confidence=analysis["ai_confidence"], recommendation=analysis["recommendation"], 
+            user_id=current_user.id, file_name=file.filename,
+            similarity_score=analysis["similarity_score"], ai_risk_score=analysis["ai_risk_score"],
+            ai_confidence=analysis["ai_confidence"], recommendation=analysis["recommendation"],
             matched_sources=analysis["matched_sources"], text_content=text,
             word_count=analysis["word_count"], sentence_count=analysis["sentence_count"],
             burstiness_score=analysis["burstiness_score"], vocabulary_richness=analysis["vocabulary_richness"],
             improvement_tips=analysis["improvement_tips"]
         )
         db.add(sub); db.commit(); db.refresh(sub)
-        
         return {
             "id": sub.id, "file_name": sub.file_name, "uploaded_at": sub.uploaded_at.isoformat(),
-            "similarity_score": sub.similarity_score, "ai_risk_score": sub.ai_risk_score, 
+            "similarity_score": sub.similarity_score, "ai_risk_score": sub.ai_risk_score,
             "ai_confidence": sub.ai_confidence, "status": "completed",
             "word_count": sub.word_count, "sentence_count": sub.sentence_count,
             "burstiness_score": sub.burstiness_score, "vocabulary_richness": sub.vocabulary_richness,
@@ -187,7 +178,6 @@ def get_reports(current_user: User = Depends(get_current_user), db: Session = De
 def download_report_pdf(submission_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sub = db.query(Submission).filter(Submission.id == submission_id, Submission.user_id == current_user.id).first()
     if not sub: raise HTTPException(404, "Not found")
-    
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 20)
@@ -215,10 +205,14 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     if sub.matched_sources:
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Matched Sources", 0, 1)
+        pdf.cell(0, 10, "Verified Matched Sources (Books / Web / Research)", 0, 1)
         pdf.set_font("Arial", "", 10)
         for src in sub.matched_sources:
             pdf.multi_cell(0, 5, f"Source: {src.get('source', 'Unknown')} | Match: {src.get('match_percent', 0)}%")
+            if src.get("url"):
+                pdf.set_text_color(0, 0, 255)
+                pdf.multi_cell(0, 5, f"URL: {src.get('url')}")
+                pdf.set_text_color(0, 0, 0)
     path = os.path.join(PDF_FOLDER, f"report_{sub.id}.pdf")
     pdf.output(path)
     return FileResponse(path, filename=f"report_{sub.id}.pdf", media_type="application/pdf")
@@ -226,7 +220,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API Premium v3.1 Starting...")
+    print("ScholarGuard API Premium v3.2 (Live Reference Engine) Starting...")
     print("=" * 60)
     seed_admin()
 

@@ -17,7 +17,6 @@
             <button id="logout-btn" class="hidden text-xs text-red-500 underline">Logout</button>
         </div>
 
-        <!-- LOGIN SECTION -->
         <div id="login-section" class="space-y-4 max-w-sm mx-auto">
             <h2 class="text-xl font-semibold text-center">Secure Portal Login</h2>
             <input type="email" id="email" placeholder="Email address" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
@@ -27,29 +26,26 @@
             <p id="login-msg" class="text-center text-sm text-red-500 hidden"></p>
         </div>
 
-        <!-- DASHBOARD SECTION -->
         <div id="dashboard-section" class="space-y-6 hidden">
             <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg">
                 <span class="text-green-700 font-medium">Welcome, <span id="user-email"></span></span>
             </div>
-            
-            <!-- UPLOAD FORM -->
+
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
                 <h2 class="text-lg font-semibold text-blue-800">📤 Upload Document for Deep Analysis</h2>
+                <p class="text-xs text-gray-500">Checked live against: 📚 Google Books • 🌐 Wikipedia •  OpenAlex Research Papers</p>
                 <input type="file" id="file-input" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-blue-100"/>
                 <button id="upload-btn" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition disabled:bg-gray-400" disabled>Run Premium Analysis</button>
             </div>
 
-            <!-- TABS & RESULTS -->
             <div id="results-wrapper" class="hidden">
                 <div class="flex border-b border-gray-200 mb-6">
                     <button onclick="showTab('overview')" id="tab-overview" class="px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600">📊 Overview</button>
-                    <button onclick="showTab('plagiarism')" id="tab-plagiarism" class="px-4 py-2 font-semibold text-gray-500 hover:text-gray-700">🕵️ Plagiarism</button>
+                    <button onclick="showTab('plagiarism')" id="tab-plagiarism" class="px-4 py-2 font-semibold text-gray-500 hover:text-gray-700">🕵️ Plagiarism & Sources</button>
                     <button onclick="showTab('ai')" id="tab-ai" class="px-4 py-2 font-semibold text-gray-500 hover:text-gray-700">🤖 AI Detector</button>
                     <button onclick="showTab('improve')" id="tab-improve" class="px-4 py-2 font-semibold text-gray-500 hover:text-gray-700">📝 Improve</button>
                 </div>
 
-                <!-- Overview Tab -->
                 <div id="content-overview" class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="bg-red-50 p-4 rounded-lg text-center border border-red-200">
                         <p class="text-xs text-red-600 font-bold">PLAGIARISM</p>
@@ -72,13 +68,11 @@
                     </div>
                 </div>
 
-                <!-- Plagiarism Tab -->
                 <div id="content-plagiarism" class="hidden space-y-4">
-                    <h3 class="text-lg font-bold text-gray-800">Matched Academic Sources</h3>
+                    <h3 class="text-lg font-bold text-gray-800">Verified Matched Sources (Books, Web & Research)</h3>
                     <ul id="sources-list" class="space-y-2"></ul>
                 </div>
 
-                <!-- AI Tab -->
                 <div id="content-ai" class="hidden space-y-4">
                     <h3 class="text-lg font-bold text-gray-800">Linguistic Profiling</h3>
                     <div class="grid grid-cols-2 gap-4">
@@ -95,14 +89,12 @@
                     </div>
                 </div>
 
-                <!-- Improve Tab -->
                 <div id="content-improve" class="hidden space-y-4">
                     <h3 class="text-lg font-bold text-gray-800">Actionable Writing Feedback</h3>
                     <ul id="tips-list" class="space-y-2"></ul>
                 </div>
             </div>
 
-            <!-- HISTORY DASHBOARD -->
             <div class="mt-8">
                 <h2 class="text-xl font-semibold border-b pb-2 mb-4">📁 Past Research & Reports</h2>
                 <ul id="history-list" class="space-y-3 max-h-96 overflow-y-auto">
@@ -116,14 +108,12 @@
         const API = "https://scholarguard.onrender.com";
         let token = localStorage.getItem("sg_token");
         let email = localStorage.getItem("sg_email");
-
         const loginSec = document.getElementById("login-section");
         const dashboardSec = document.getElementById("dashboard-section");
         const fileInput = document.getElementById("file-input");
         const uploadBtn = document.getElementById("upload-btn");
 
         if (token && email) showDashboard();
-
         fileInput.addEventListener("change", () => { uploadBtn.disabled = fileInput.files.length === 0; });
 
         function showTab(tab) {
@@ -138,8 +128,7 @@
         }
 
         document.getElementById("login-btn").addEventListener("click", async () => {
-            const msg = document.getElementById("login-msg");
-            msg.classList.add("hidden");
+            const msg = document.getElementById("login-msg"); msg.classList.add("hidden");
             const res = await fetch(`${API}/api/login`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: document.getElementById("email").value, password: document.getElementById("password").value })
@@ -154,7 +143,7 @@
 
         uploadBtn.addEventListener("click", async () => {
             const file = fileInput.files[0]; if (!file) return;
-            uploadBtn.innerText = "Running Deep Analysis..."; uploadBtn.disabled = true;
+            uploadBtn.innerText = "Scanning Books, Web & Research Papers..."; uploadBtn.disabled = true;
             const formData = new FormData(); formData.append("file", file);
             try {
                 const res = await fetch(`${API}/api/upload?token=${token}`, { method: "POST", body: formData });
@@ -167,22 +156,34 @@
                     document.getElementById("res-burst").innerText = data.burstiness_score + "%";
                     document.getElementById("res-vocab").innerText = data.vocabulary_richness + "%";
                     document.getElementById("pdf-link").href = `${API}/api/reports/${data.id}/pdf?token=${token}`;
-                    
+
                     const sourcesList = document.getElementById("sources-list"); sourcesList.innerHTML = "";
-                    data.matched_sources.forEach(s => {
-                        sourcesList.innerHTML += `<li class="p-3 bg-red-50 border border-red-200 rounded-lg flex justify-between"><span>${s.source}</span><span class="font-bold text-red-600">${s.match_percent}%</span></li>`;
-                    });
-                    
+                    if (data.matched_sources && data.matched_sources.length > 0) {
+                        data.matched_sources.forEach(s => {
+                            sourcesList.innerHTML += `
+                              <li class="p-4 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold text-red-800">${s.source}</span>
+                                    <span class="font-bold text-red-600">${s.match_percent}% match</span>
+                                </div>
+                                <p class="text-xs text-gray-600 italic">"${s.matched_text || ''}"</p>
+                                <a href="${s.url}" target="_blank" class="text-xs text-blue-600 underline">View Original Source →</a>
+                              </li>`;
+                        });
+                    } else {
+                        sourcesList.innerHTML = '<li class="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">✅ No matching sources found in Books, Wikipedia, or Research Papers. The text appears original.</li>';
+                    }
+
                     const tipsList = document.getElementById("tips-list"); tipsList.innerHTML = "";
                     data.improvement_tips.forEach(tip => {
                         tipsList.innerHTML += `<li class="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800">💡 ${tip}</li>`;
                     });
-                    
+
                     document.getElementById("results-wrapper").classList.remove("hidden");
                     showTab('overview');
                     loadHistory();
                 } else { alert("Error: " + (data.detail || "Unknown error")); }
-            } catch (err) { alert("Network error. Is the backend running?"); } 
+            } catch (err) { alert("Network error. Is the backend running?"); }
             finally { uploadBtn.innerText = "Run Premium Analysis"; uploadBtn.disabled = false; }
         });
 
