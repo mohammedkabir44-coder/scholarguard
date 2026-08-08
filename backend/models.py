@@ -8,12 +8,21 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, default="")
+    phone_number = Column(String, default="")
     role = Column(String, default="user")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        return {"id": self.id, "email": self.email, "full_name": self.full_name, "role": self.role, "is_active": self.is_active, "created_at": self.created_at.isoformat() if self.created_at else None}
+        return {
+            "id": self.id, 
+            "email": self.email, 
+            "full_name": self.full_name,
+            "phone_number": self.phone_number,
+            "role": self.role, 
+            "is_active": self.is_active, 
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
 
 class Submission(Base):
     __tablename__ = "submissions"

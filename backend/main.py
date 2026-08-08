@@ -26,7 +26,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="3.0.0")
+app = FastAPI(title="ScholarGuard API", version="3.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,14 +86,14 @@ def seed_admin():
     try:
         admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()
         if not admin:
-            db.add(User(email=ADMIN_EMAIL, hashed_password=get_password_hash(ADMIN_PASSWORD), full_name="Administrator", role="admin", is_active=True))
+            db.add(User(email=ADMIN_EMAIL, hashed_password=get_password_hash(ADMIN_PASSWORD), full_name="Administrator", phone_number="000-000-0000", role="admin", is_active=True))
             db.commit()
             print(f"Admin account created: {ADMIN_EMAIL}")
     finally:
         db.close()
 
 @app.get("/")
-def root(): return {"message": "ScholarGuard API Premium v3.0", "version": "3.0.0"}
+def root(): return {"message": "ScholarGuard API Premium v3.1", "version": "3.1.0"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -111,12 +111,20 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 class AdminCreateUser(BaseModel):
     email: str
     password: str
+    phone_number: str = ""
 
 @app.post("/api/admin/users")
 def admin_create_user(request: AdminCreateUser, admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == request.email).first()
     if existing: raise HTTPException(status_code=400, detail="Email already exists")
-    new_user = User(email=request.email, hashed_password=get_password_hash(request.password), full_name="", role="user", is_active=True)
+    new_user = User(
+        email=request.email, 
+        hashed_password=get_password_hash(request.password), 
+        full_name="", 
+        phone_number=request.phone_number,
+        role="user", 
+        is_active=True
+    )
     db.add(new_user); db.commit(); db.refresh(new_user)
     return {"message": "User created", "user": new_user.to_dict()}
 
@@ -185,12 +193,10 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     pdf.set_font("Arial", "B", 20)
     pdf.cell(0, 15, "ScholarGuard Premium Analysis Report", 0, 1, 'C')
     pdf.ln(5)
-    
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 6, f"Document: {sub.file_name}", 0, 1)
     pdf.cell(0, 6, f"Words: {sub.word_count} | Sentences: {sub.sentence_count}", 0, 1)
     pdf.ln(5)
-    
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Core Metrics", 0, 1)
     pdf.set_font("Arial", "", 12)
@@ -199,7 +205,6 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     pdf.cell(0, 8, f"Burstiness (Human Variation): {sub.burstiness_score}%", 0, 1)
     pdf.cell(0, 8, f"Vocabulary Richness: {sub.vocabulary_richness}%", 0, 1)
     pdf.ln(5)
-    
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Improvement Report", 0, 1)
     pdf.set_font("Arial", "", 11)
@@ -207,7 +212,6 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     for tip in tips:
         pdf.multi_cell(0, 6, f"- {tip}")
     pdf.ln(5)
-    
     if sub.matched_sources:
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
@@ -215,7 +219,6 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
         pdf.set_font("Arial", "", 10)
         for src in sub.matched_sources:
             pdf.multi_cell(0, 5, f"Source: {src.get('source', 'Unknown')} | Match: {src.get('match_percent', 0)}%")
-            
     path = os.path.join(PDF_FOLDER, f"report_{sub.id}.pdf")
     pdf.output(path)
     return FileResponse(path, filename=f"report_{sub.id}.pdf", media_type="application/pdf")
@@ -223,7 +226,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API Premium v3.0 Starting...")
+    print("ScholarGuard API Premium v3.1 Starting...")
     print("=" * 60)
     seed_admin()
 
