@@ -1,5 +1,5 @@
 ﻿/* ========================================
-   ScholarGuard Teacher Dashboard
+   Sawa Digital Tech Solutions - Teacher Dashboard
    Professional EdTech Styling
    ======================================== */
 
@@ -705,6 +705,7 @@ body {
     z-index: 1000;
     padding: var(--spacing-lg);
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .modal-content {

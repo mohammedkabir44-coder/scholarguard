@@ -1,5 +1,5 @@
 """
-ScholarGuard Database Configuration
+Sawa Digital Tech Solutions Database Configuration
 SQLAlchemy setup with SQLite database
 """
 
@@ -12,7 +12,7 @@ import os
 # Database URL - SQLite for development
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite:///./scholarguard.db"
+    "sqlite:///./sawadigitaltech.db"
 )
 
 # Create SQLAlchemy engine

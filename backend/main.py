@@ -1,5 +1,5 @@
 ﻿"""
-ScholarGuard API
+Sawa Digital Tech Solutions API
 Academic Integrity Platform - Commercial-Ready SaaS
 """
 
@@ -21,12 +21,12 @@ import uuid
 import jwt
 from fpdf import FPDF
 
-from database import get_db, init_db, engine, Base
+from database import get_db, init_db, engine, Base, SessionLocal
 from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="3.2.0")
+app = FastAPI(title="Sawa Digital Tech Solutions API", version="3.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,10 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "scholarguard-secret-key-change-in-production-2025")
+SECRET_KEY = os.getenv("SECRET_KEY", "sawadigitaltech-secret-key-change-in-production-2025")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@scholarguard.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@sawadigitaltech.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@12345")
 
 UPLOAD_FOLDER = "uploads"
@@ -92,8 +92,22 @@ def seed_admin():
     finally:
         db.close()
 
+def create_default_admin(db: Session):
+    """Create the default admin account if it doesn't already exist."""
+    admin = db.query(User).filter(User.email == "admin@scholarguard.com").first()
+    if not admin:
+        db.add(User(
+            email="admin@scholarguard.com",
+            hashed_password=get_password_hash("Admin123!"),
+            full_name="Administrator",
+            role="admin",
+            is_active=True,
+        ))
+        db.commit()
+    print("✅ Default admin account verified/created.")
+
 @app.get("/")
-def root(): return {"message": "ScholarGuard API Premium v3.2 - Live Reference Engine", "version": "3.2.0"}
+def root(): return {"message": "Sawa Digital Tech Solutions API Premium v3.2 - Live Reference Engine", "version": "3.2.0"}
 
 class LoginRequest(BaseModel):
     email: str
@@ -181,7 +195,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 20)
-    pdf.cell(0, 15, "ScholarGuard Premium Analysis Report", 0, 1, 'C')
+    pdf.cell(0, 15, "Sawa Digital Tech Solutions - Premium Analysis Report", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 6, f"Document: {sub.file_name}", 0, 1)
@@ -220,9 +234,14 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API Premium v3.2 (Live Reference Engine) Starting...")
+    print("Sawa Digital Tech Solutions API Premium v3.2 (Live Reference Engine) Starting...")
     print("=" * 60)
     seed_admin()
+    db = SessionLocal()
+    try:
+        create_default_admin(db)
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     import uvicorn

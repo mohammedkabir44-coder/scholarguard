@@ -1,13 +1,13 @@
 ﻿/**
- * ScholarGuard Teacher Dashboard
+ * Sawa Digital Tech Solutions - Teacher Dashboard
  * Academic Integrity Platform - Frontend Application
  */
 
 // Console log to indicate dashboard has started
-console.log("ScholarGuard dashboard started");
+console.log("Sawa Digital Tech Solutions dashboard started");
 
 // Configuration
-const API_BASE_URL = 'https://scholarguard.onrender.com';
+const API_BASE_URL = 'https://sawadigitaltech.onrender.com';
 const UPLOAD_URL = `${API_BASE_URL}/api/upload`;
 const REPORTS_URL = `${API_BASE_URL}/api/reports`;
 
@@ -157,7 +157,7 @@ async function uploadFile(file) {
         formData.append('file', file);
         
         // Get token for authentication
-        const token = localStorage.getItem('scholarguard_token');
+        const token = localStorage.getItem('sawa_token');
         
         // Upload file
         const response = await fetch(`${UPLOAD_URL}?token=${token}`, {
@@ -205,7 +205,7 @@ async function uploadFile(file) {
  */
 async function fetchReports(skip = 0, limit = 100) {
     try {
-        const token = localStorage.getItem('scholarguard_token');
+const token = localStorage.getItem('sawa_token');
         const response = await fetch(`${REPORTS_URL}?token=${token}`);
         
         if (!response.ok) {
@@ -314,7 +314,7 @@ function updateStats(reports) {
  */
 async function viewReport(reportId) {
     try {
-        const token = localStorage.getItem('scholarguard_token');
+const token = localStorage.getItem('sawa_token');
         const response = await fetch(`${REPORTS_URL}/${reportId}?token=${token}`);
         
         if (!response.ok) {
@@ -472,7 +472,7 @@ window.closeModal = closeModal;
 
 // Load reports on page load
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('ScholarGuard dashboard initialized');
+    console.log('Sawa Digital Tech Solutions dashboard initialized');
     refreshReports();
 });
 

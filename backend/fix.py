@@ -1,7 +1,7 @@
 import os
 
 code = '''"""
-ScholarGuard API
+Sawa Digital Tech Solutions API
 Academic Integrity Platform - Commercial-Ready SaaS
 """
 
@@ -27,7 +27,7 @@ from models import User, Submission
 from services.file_parser import extract_text_from_file
 from services.analyzer import analyze_document
 
-app = FastAPI(title="ScholarGuard API", version="1.0.0")
+app = FastAPI(title="Sawa Digital Tech Solutions API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -74,7 +74,7 @@ def get_current_user(token: str = Query(...), db: Session = Depends(get_db)) -> 
 
 @app.get("/")
 def root():
-    return {"message": "ScholarGuard API is running"}
+    return {"message": "Sawa Digital Tech Solutions API is running"}
 
 @app.post("/api/register")
 def register(request: BaseModel, db: Session = Depends(get_db)):
@@ -142,7 +142,7 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, f"ScholarGuard Report: {sub.file_name}", 0, 1)
+    pdf.cell(0, 10, f"Sawa Digital Tech Solutions Report: {sub.file_name}", 0, 1)
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Similarity: {sub.similarity_score}%", 0, 1)
     pdf.cell(0, 10, f"AI Risk: {sub.ai_risk_score}%", 0, 1)
@@ -155,8 +155,8 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
 @app.on_event("startup")
 async def startup_event():
     print("=" * 60)
-    print("ScholarGuard API Starting...")
-    print(f"JWT Secret: {'Configured' if SECRET_KEY != 'scholarguard-secret-key-change-in-production-2025' else 'Using default'}")
+    print("Sawa Digital Tech Solutions API Starting...")
+    print(f"JWT Secret: {'Configured' if SECRET_KEY != 'sawadigitaltech-secret-key-change-in-production-2025' else 'Using default'}")
     print("=" * 60)
 
 if __name__ == "__main__":

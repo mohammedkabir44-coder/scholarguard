@@ -1,5 +1,5 @@
 ﻿/**
- * ScholarGuard Teacher Dashboard - Frontend Application
+ * Sawa Digital Tech Solutions - Frontend Application
  * Commercial-Ready SaaS with Authentication & PDF Export
  */
 
@@ -37,14 +37,14 @@ const emptyState = document.getElementById('emptyState');
  * Get JWT token from localStorage
  */
 function getToken() {
-    return localStorage.getItem('scholarguard_token');
+    return localStorage.getItem('sawa_token');
 }
 
 /**
  * Get user data from localStorage
  */
 function getUser() {
-    const userData = localStorage.getItem('scholarguard_user');
+    const userData = localStorage.getItem('sawa_user');
     return userData ? JSON.parse(userData) : null;
 }
 
@@ -59,16 +59,16 @@ function isAuthenticated() {
  * Save authentication data
  */
 function saveAuth(token, user) {
-    localStorage.setItem('scholarguard_token', token);
-    localStorage.setItem('scholarguard_user', JSON.stringify(user));
+    localStorage.setItem('sawa_token', token);
+    localStorage.setItem('sawa_user', JSON.stringify(user));
 }
 
 /**
  * Clear authentication data
  */
 function clearAuth() {
-    localStorage.removeItem('scholarguard_token');
-    localStorage.removeItem('scholarguard_user');
+    localStorage.removeItem('sawa_token');
+    localStorage.removeItem('sawa_user');
 }
 
 /**
@@ -676,7 +676,7 @@ async function handleRegisterSubmit(e) {
         
         await registerUser(email, password);
         
-        showStatus('Account created successfully! Welcome to ScholarGuard.', 'success');
+        showStatus('Account created successfully! Welcome to Sawa Digital Tech Solutions.', 'success');
         showDashboard();
         
         // Fetch reports
@@ -745,7 +745,7 @@ if (fileInput) {
  * Initialize application
  */
 async function init() {
-    console.log('ScholarGuard Teacher Dashboard initialized');
+    console.log('Sawa Digital Tech Solutions Dashboard initialized');
     
     // Check authentication state
     if (isAuthenticated()) {

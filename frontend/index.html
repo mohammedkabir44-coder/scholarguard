@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScholarGuard Premium</title>
+    <title>Sawa Digital Tech Solutions - Premium</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center p-4">
@@ -11,7 +11,7 @@
     <div class="w-full max-w-4xl bg-white shadow-xl rounded-xl p-8 space-y-6 my-8">
         <div class="text-center border-b pb-4 flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold text-blue-600">ScholarGuard Premium</h1>
+                <h1 class="text-3xl font-bold text-blue-600">Sawa Digital Tech Solutions</h1>
                 <p class="text-gray-500 mt-1">Advanced Academic Integrity & Research Platform</p>
             </div>
             <button id="logout-btn" class="hidden text-xs text-red-500 underline">Logout</button>
@@ -105,8 +105,8 @@
     </div>
 
     <script>
-        const API = "https://scholarguard.onrender.com";
-        let token = localStorage.getItem("sg_token");
+        const API = "https://sawadigitaltech.onrender.com";
+        let token = localStorage.getItem("sawa_token");
         let email = localStorage.getItem("sg_email");
         const loginSec = document.getElementById("login-section");
         const dashboardSec = document.getElementById("dashboard-section");
@@ -136,7 +136,7 @@
             const data = await res.json();
             if (res.ok) {
                 token = data.access_token; email = data.user.email;
-                localStorage.setItem("sg_token", token); localStorage.setItem("sg_email", email);
+                localStorage.setItem("sawa_token", token); localStorage.setItem("sg_email", email);
                 showDashboard();
             } else { msg.innerText = data.detail || "Login failed"; msg.classList.remove("hidden"); }
         });
@@ -213,7 +213,7 @@
         }
 
         document.getElementById("logout-btn").addEventListener("click", () => {
-            localStorage.removeItem("sg_token"); localStorage.removeItem("sg_email"); location.reload();
+            localStorage.removeItem("sawa_token"); localStorage.removeItem("sg_email"); location.reload();
         });
 
         function showDashboard() {
