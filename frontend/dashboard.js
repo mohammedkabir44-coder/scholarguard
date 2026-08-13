@@ -7,7 +7,7 @@
 console.log("Sawa Digital Tech Solutions dashboard started");
 
 // Configuration
-const API_BASE_URL = 'https://sawadigitaltech.onrender.com';
+const API_BASE_URL = 'https://scholarguard.onrender.com';
 const UPLOAD_URL = `${API_BASE_URL}/api/upload`;
 const REPORTS_URL = `${API_BASE_URL}/api/reports`;
 
