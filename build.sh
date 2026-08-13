@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -o errexit
-cd backend
+
+# Install Python dependencies from backend directory
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r backend/requirements.txt

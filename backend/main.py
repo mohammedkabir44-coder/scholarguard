@@ -30,7 +30,8 @@ app = FastAPI(title="Sawa Digital Tech Solutions API", version="3.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Accepts requests from ANY website (Vercel, Netlify, etc.)
+    allow_credentials=False, # MUST be False when using "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,11 +40,18 @@ SECRET_KEY = os.getenv("SECRET_KEY", "sawadigitaltech-secret-key-change-in-produ
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@sawadigitaltech.com")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@12345")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
 
-UPLOAD_FOLDER = "uploads"
+# Use Render's persistent disk for file storage if available
+RENDER_DISK_PATH = "/opt/render/project/src/data"
+if os.path.exists(RENDER_DISK_PATH):
+    UPLOAD_FOLDER = os.path.join(RENDER_DISK_PATH, "uploads")
+    PDF_FOLDER = os.path.join(RENDER_DISK_PATH, "reports")
+else:
+    UPLOAD_FOLDER = "uploads"
+    PDF_FOLDER = "reports"
+
 if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
-PDF_FOLDER = "reports"
 if not os.path.exists(PDF_FOLDER): os.makedirs(PDF_FOLDER)
 
 Base.metadata.create_all(bind=engine)
@@ -89,6 +97,15 @@ def seed_admin():
             db.add(User(email=ADMIN_EMAIL, hashed_password=get_password_hash(ADMIN_PASSWORD), full_name="Administrator", phone_number="000-000-0000", role="admin", is_active=True))
             db.commit()
             print(f"Admin account created: {ADMIN_EMAIL}")
+            return
+        # Ensure the existing admin has the correct role/password
+        if admin.role != "admin":
+            admin.role = "admin"
+        if not verify_password(ADMIN_PASSWORD, admin.hashed_password):
+            print(f"Admin password mismatch for {ADMIN_EMAIL} - resetting to configured password.")
+            admin.hashed_password = get_password_hash(ADMIN_PASSWORD)
+        db.commit()
+        print(f"Admin account verified: {ADMIN_EMAIL}")
     finally:
         db.close()
 
@@ -115,12 +132,19 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == request.email).first()
-    if not user or not verify_password(request.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
-    return {"message": "Login successful", "access_token": create_access_token(data={"sub": request.email}), "user": user.to_dict()}
+    print("ADMIN LOGIN ATTEMPT:", request.email)
+    try:
+        user = db.query(User).filter(User.email == request.email).first()
+        if not user or not verify_password(request.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
+        return {"message": "Login successful", "access_token": create_access_token(data={"sub": request.email}), "user": user.to_dict()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("LOGIN ERROR:", e)
+        raise HTTPException(status_code=500, detail="Internal server error during login")
 
 class AdminCreateUser(BaseModel):
     email: str

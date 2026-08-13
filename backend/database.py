@@ -9,10 +9,19 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 import os
 
-# Database URL - SQLite for development
+# Database URL - SQLite for development, uses persistent disk on Render
+# Render provides /opt/render/project/src/data for persistent storage
+def _get_database_path() -> str:
+    """Return the database file path, using Render's persistent disk if available."""
+    render_disk_path = "/opt/render/project/src/data"
+    if os.path.exists(render_disk_path):
+        return os.path.join(render_disk_path, "sawadigitaltech.db")
+    return "./sawadigitaltech.db"
+
+
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite:///./sawadigitaltech.db"
+    f"sqlite:///{_get_database_path()}"
 )
 
 # Create SQLAlchemy engine
