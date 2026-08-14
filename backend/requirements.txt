@@ -9,3 +9,4 @@ fpdf2
 python-dotenv
 docx2txt
 PyPDF2
+requests

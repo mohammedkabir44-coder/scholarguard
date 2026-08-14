@@ -343,6 +343,41 @@ const token = localStorage.getItem('sawa_token');
         const report = data;
         
         // Display report in modal
+        const matchedSources = report.matched_sources || [];
+        const sourcesHtml = matchedSources.length > 0 ? `
+            <div class="report-section">
+                <h3>Verified Academic Sources (CrossRef)</h3>
+                <div class="sources-list">
+                    ${matchedSources.map((src, idx) => `
+                        <div class="source-card">
+                            <div class="source-header">
+                                <span class="source-number">#${idx + 1}</span>
+                                <span class="source-match score-badge ${getScoreClass(src.match_percent || 0)}">${(src.match_percent || 0).toFixed(1)}% Match</span>
+                            </div>
+                            <div class="source-title">${escapeHtml(src.title || 'Untitled Research Paper')}</div>
+                            <div class="source-meta">
+                                <div class="source-meta-item">
+                                    <label>Author(s):</label>
+                                    <span>${escapeHtml(src.author || 'Unknown Author')}</span>
+                                </div>
+                                <div class="source-meta-item">
+                                    <label>Journal:</label>
+                                    <span>${escapeHtml(src.journal || 'Unknown Journal')}${src.year ? ` (${src.year})` : ''}</span>
+                                </div>
+                                ${src.doi ? `<div class="source-meta-item"><label>DOI:</label><span>${escapeHtml(src.doi)}</span></div>` : ''}
+                            </div>
+                            ${src.url ? `<a href="${src.url}" target="_blank" rel="noopener noreferrer" class="source-link">View Paper <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 11L11 3M11 3H5M11 3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : `
+            <div class="report-section">
+                <h3>Verified Academic Sources</h3>
+                <p class="no-sources">No academic sources matched. This document appears to be original.</p>
+            </div>
+        `;
+
         modalBody.innerHTML = `
             <div class="report-details">
                 <div class="report-section">
@@ -385,6 +420,8 @@ const token = localStorage.getItem('sawa_token');
                     <h3>Recommendation</h3>
                     <p>${report.recommendation || 'No recommendation available'}</p>
                 </div>
+
+                ${sourcesHtml}
             </div>
         `;
         

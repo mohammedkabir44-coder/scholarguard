@@ -1032,6 +1032,104 @@ body {
 }
 
 /* ========================================
+   Report Detail - Academic Sources
+   ======================================== */
+.sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.source-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: var(--transition-fast);
+}
+
+.source-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.source-number {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--primary-color);
+    background: var(--primary-lighter);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.source-match {
+    font-size: var(--font-size-xs);
+}
+
+.source-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.4;
+}
+
+.source-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+}
+
+.source-meta-item {
+    display: flex;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}
+
+.source-meta-item label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 70px;
+    flex-shrink: 0;
+}
+
+.source-meta-item span {
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--primary-color);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.source-link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.no-sources {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-sm);
+}
+
+/* ========================================
    Modal
    ======================================== */
 .modal {

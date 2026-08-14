@@ -301,6 +301,26 @@ def get_reports(current_user: User = Depends(get_current_user), db: Session = De
     subs = db.query(Submission).filter(Submission.user_id == current_user.id).order_by(Submission.uploaded_at.desc()).all()
     return {"total_reports": len(subs), "reports": [{"id": s.id, "file_name": s.file_name, "uploaded_at": s.uploaded_at.isoformat(), "similarity_score": s.similarity_score, "ai_risk_score": s.ai_risk_score} for s in subs]}
 
+@app.get("/api/reports/{submission_id}")
+def get_report_detail(submission_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    sub = db.query(Submission).filter(Submission.id == submission_id, Submission.user_id == current_user.id).first()
+    if not sub: raise HTTPException(404, "Not found")
+    return {
+        "id": sub.id,
+        "file_name": sub.file_name,
+        "uploaded_at": sub.uploaded_at.isoformat() if sub.uploaded_at else None,
+        "similarity_score": sub.similarity_score,
+        "ai_risk_score": sub.ai_risk_score,
+        "ai_confidence": sub.ai_confidence,
+        "recommendation": sub.recommendation,
+        "word_count": sub.word_count,
+        "sentence_count": sub.sentence_count,
+        "burstiness_score": sub.burstiness_score,
+        "vocabulary_richness": sub.vocabulary_richness,
+        "matched_sources": sub.matched_sources or [],
+        "improvement_tips": sub.improvement_tips or []
+    }
+
 @app.get("/api/reports/{submission_id}/pdf")
 def download_report_pdf(submission_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     sub = db.query(Submission).filter(Submission.id == submission_id, Submission.user_id == current_user.id).first()
@@ -332,14 +352,30 @@ def download_report_pdf(submission_id: int, current_user: User = Depends(get_cur
     if sub.matched_sources:
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Verified Matched Sources (Books / Web / Research)", 0, 1)
+        pdf.cell(0, 10, "Verified Academic Sources (CrossRef)", 0, 1)
         pdf.set_font("Arial", "", 10)
         for src in sub.matched_sources:
-            pdf.multi_cell(0, 5, f"Source: {src.get('source', 'Unknown')} | Match: {src.get('match_percent', 0)}%")
-            if src.get("url"):
+            title = src.get("title", "Unknown Title")
+            author = src.get("author", "Unknown Author")
+            journal = src.get("journal", "Unknown Journal")
+            year = src.get("year", "N/A")
+            match_pct = src.get("match_percent", 0)
+            url = src.get("url", "")
+            doi = src.get("doi", "")
+
+            pdf.set_font("Arial", "B", 11)
+            pdf.multi_cell(0, 6, f"Title: {title}")
+            pdf.set_font("Arial", "", 10)
+            pdf.multi_cell(0, 5, f"Author(s): {author}")
+            pdf.multi_cell(0, 5, f"Journal: {journal} ({year})")
+            pdf.multi_cell(0, 5, f"Match: {match_pct}%")
+            if doi:
+                pdf.multi_cell(0, 5, f"DOI: {doi}")
+            if url:
                 pdf.set_text_color(0, 0, 255)
-                pdf.multi_cell(0, 5, f"URL: {src.get('url')}")
+                pdf.multi_cell(0, 5, f"URL: {url}")
                 pdf.set_text_color(0, 0, 0)
+            pdf.ln(3)
     path = os.path.join(PDF_FOLDER, f"report_{sub.id}.pdf")
     pdf.output(path)
     return FileResponse(path, filename=f"report_{sub.id}.pdf", media_type="application/pdf")
