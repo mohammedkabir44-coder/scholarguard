@@ -39,8 +39,8 @@ app.add_middleware(
 SECRET_KEY = os.getenv("SECRET_KEY", "sawadigitaltech-secret-key-change-in-production-2025")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@sawadigitaltech.com")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@test.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin12345")
 
 # Use Render's persistent disk for file storage if available
 RENDER_DISK_PATH = "/opt/render/project/src/data"
@@ -111,17 +111,17 @@ def seed_admin():
 
 def create_default_admin(db: Session):
     """Create the default admin account if it doesn't already exist."""
-    admin = db.query(User).filter(User.email == "admin@scholarguard.com").first()
+    admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()
     if not admin:
         db.add(User(
-            email="admin@scholarguard.com",
-            hashed_password=get_password_hash("Admin123!"),
+            email=ADMIN_EMAIL,
+            hashed_password=get_password_hash(ADMIN_PASSWORD),
             full_name="Administrator",
             role="admin",
             is_active=True,
         ))
         db.commit()
-    print("✅ Default admin account verified/created.")
+    print(f"✅ Bulletproof admin created: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
 
 @app.get("/")
 def root(): return {"message": "Sawa Digital Tech Solutions API Premium v3.2 - Live Reference Engine", "version": "3.2.0"}

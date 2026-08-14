@@ -1,7 +1,7 @@
 """
 Create Admin Account Script
 Run: python create_admin.py
-Creates admin@scholarguard.com with password Admin123!
+Creates admin@test.com with password Admin12345
 """
 
 import hashlib
@@ -10,8 +10,8 @@ import bcrypt
 from database import SessionLocal, init_db
 from models import User
 
-ADMIN_EMAIL = "admin@scholarguard.com"
-ADMIN_PASSWORD = "Admin123!"
+ADMIN_EMAIL = "admin@test.com"
+ADMIN_PASSWORD = "Admin12345"
 
 
 def get_password_hash(password: str) -> str:

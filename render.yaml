@@ -10,9 +10,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_EMAIL
-        value: admin@sawadigitaltech.com
+        value: admin@test.com
       - key: ADMIN_PASSWORD
-        value: Admin@12345
+        value: Admin12345
     disk:
       name: scholarguard-data
       mountPath: /opt/render/project/src/data
