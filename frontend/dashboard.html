@@ -130,6 +130,106 @@
                 </div>
             </section>
 
+            <!-- Compare Two Documents Section -->
+            <section class="compare-section">
+                <div class="section-header">
+                    <h2 class="section-title">Compare Two Documents</h2>
+                    <p class="section-subtitle">Premium side-by-side comparison to detect duplicated content between two documents</p>
+                </div>
+
+                <div class="compare-container">
+                    <div class="compare-file-inputs">
+                        <div class="compare-file-field">
+                            <label class="compare-file-label">Document A</label>
+                            <div class="compare-file-drop" id="compareDropA" onclick="document.getElementById('compareFileA').click()">
+                                <div class="compare-file-content">
+                                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M16 8V22M16 8L10 14M16 8L22 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M6 22V26H26V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p class="compare-file-title" id="compareFileAName">Select File A</p>
+                                    <p class="compare-file-subtitle">PDF, DOCX, DOC, TXT, RTF</p>
+                                </div>
+                                <input type="file" id="compareFileA" class="file-input" accept=".pdf,.docx,.doc,.txt,.rtf" hidden>
+                            </div>
+                        </div>
+
+                        <div class="compare-vs">
+                            <span>VS</span>
+                        </div>
+
+                        <div class="compare-file-field">
+                            <label class="compare-file-label">Document B</label>
+                            <div class="compare-file-drop" id="compareDropB" onclick="document.getElementById('compareFileB').click()">
+                                <div class="compare-file-content">
+                                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M16 8V22M16 8L10 14M16 8L22 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M6 22V26H26V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <p class="compare-file-title" id="compareFileBName">Select File B</p>
+                                    <p class="compare-file-subtitle">PDF, DOCX, DOC, TXT, RTF</p>
+                                </div>
+                                <input type="file" id="compareFileB" class="file-input" accept=".pdf,.docx,.doc,.txt,.rtf" hidden>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compare-actions">
+                        <button class="btn btn-primary" id="compareBtn" onclick="compareDocuments()">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 5C2 3.89543 2.89543 3 4 3H14C15.1046 3 16 3.89543 16 5V13C16 14.1046 15.1046 14 14 14H4C2.89543 14 2 13.1046 2 13V5Z" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M2 7H16" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M5 11H9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Compare Documents
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Compare Progress -->
+                <div class="upload-progress compare-progress" id="compareProgress" style="display: none;">
+                    <div class="progress-content">
+                        <div class="spinner"></div>
+                        <div class="progress-text">
+                            <div class="progress-title">Comparing documents...</div>
+                            <div class="progress-subtitle">This may take a few seconds</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compare Results -->
+                <div class="compare-results" id="compareResults" style="display: none;">
+                    <div class="compare-result-header">
+                        <div class="compare-result-doc-label">
+                            <span class="doc-chip doc-a">A</span>
+                            <span id="compareResultFileA">Document A</span>
+                        </div>
+                        <div class="compare-result-right">
+                            <div class="compare-similarity-badge" id="compareSimilarityBadge">
+                                <div class="compare-similarity-value" id="compareSimilarityValue">0%</div>
+                                <div class="compare-similarity-label">Similarity</div>
+                            </div>
+                        </div>
+                        <div class="compare-result-doc-label">
+                            <span class="doc-chip doc-b">B</span>
+                            <span id="compareResultFileB">Document B</span>
+                        </div>
+                    </div>
+
+                    <div class="compare-verdict" id="compareVerdict"></div>
+
+                    <div class="compare-matched-section">
+                        <h4 class="compare-matched-title">Exact Matched Sentences</h4>
+                        <p class="compare-matched-subtitle">The following text blocks were found to be identical in both documents</p>
+                        <div class="compare-matched-box" id="compareMatchedBox">
+                            <div class="empty-content">
+                                <p>No exact matches found. These documents appear to be original.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Reports Section -->
             <section class="reports-section">
                 <div class="section-header">

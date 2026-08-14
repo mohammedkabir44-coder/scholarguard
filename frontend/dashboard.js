@@ -10,6 +10,7 @@ console.log("Sawa Digital Tech Solutions dashboard started");
 const API_BASE_URL = 'https://scholarguard.onrender.com';
 const UPLOAD_URL = `${API_BASE_URL}/api/upload`;
 const REPORTS_URL = `${API_BASE_URL}/api/reports`;
+const COMPARE_URL = `${API_BASE_URL}/api/compare`;
 
 // DOM Elements
 const uploadZone = document.getElementById('uploadZone');
@@ -21,6 +22,23 @@ const avgSimilarityEl = document.getElementById('avgSimilarity');
 const avgAIRiskEl = document.getElementById('avgAIRisk');
 const reportModal = document.getElementById('reportModal');
 const modalBody = document.getElementById('modalBody');
+
+// Compare DOM Elements
+const compareFileA = document.getElementById('compareFileA');
+const compareFileB = document.getElementById('compareFileB');
+const compareFileAName = document.getElementById('compareFileAName');
+const compareFileBName = document.getElementById('compareFileBName');
+const compareDropA = document.getElementById('compareDropA');
+const compareDropB = document.getElementById('compareDropB');
+const compareBtn = document.getElementById('compareBtn');
+const compareProgress = document.getElementById('compareProgress');
+const compareResults = document.getElementById('compareResults');
+const compareSimilarityBadge = document.getElementById('compareSimilarityBadge');
+const compareSimilarityValue = document.getElementById('compareSimilarityValue');
+const compareVerdict = document.getElementById('compareVerdict');
+const compareMatchedBox = document.getElementById('compareMatchedBox');
+const compareResultFileA = document.getElementById('compareResultFileA');
+const compareResultFileB = document.getElementById('compareResultFileB');
 
 // ========================================
 // Utility Functions
@@ -387,6 +405,185 @@ function closeModal() {
 }
 
 // ========================================
+// Document Comparison Functions
+// ========================================
+
+/**
+ * Update file name display when a file is selected
+ * @param {HTMLInputElement} input - File input element
+ * @param {HTMLElement} nameEl - Element to display file name
+ * @param {HTMLElement} dropEl - Drop zone element
+ */
+function updateCompareFileName(input, nameEl, dropEl) {
+    if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        nameEl.textContent = file.name;
+        nameEl.classList.add('has-file');
+        dropEl.classList.add('has-file');
+    } else {
+        nameEl.textContent = 'Select File';
+        nameEl.classList.remove('has-file');
+        dropEl.classList.remove('has-file');
+    }
+}
+
+/**
+ * Compare two documents via the backend API
+ */
+async function compareDocuments() {
+    // Validate both files are selected
+    if (!compareFileA.files || compareFileA.files.length === 0) {
+        showToast('Please select Document A to compare', 'error');
+        return;
+    }
+    if (!compareFileB.files || compareFileB.files.length === 0) {
+        showToast('Please select Document B to compare', 'error');
+        return;
+    }
+
+    const fileA = compareFileA.files[0];
+    const fileB = compareFileB.files[0];
+
+    // Validate file types
+    const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt', '.rtf'];
+    const extA = '.' + fileA.name.split('.').pop().toLowerCase();
+    const extB = '.' + fileB.name.split('.').pop().toLowerCase();
+
+    if (!allowedExtensions.includes(extA)) {
+        showToast(`Invalid file type for Document A. Allowed: ${allowedExtensions.join(', ')}`, 'error');
+        return;
+    }
+    if (!allowedExtensions.includes(extB)) {
+        showToast(`Invalid file type for Document B. Allowed: ${allowedExtensions.join(', ')}`, 'error');
+        return;
+    }
+
+    // Validate file sizes
+    if (fileA.size > 10 * 1024 * 1024) {
+        showToast('Document A is too large. Maximum size: 10MB', 'error');
+        return;
+    }
+    if (fileB.size > 10 * 1024 * 1024) {
+        showToast('Document B is too large. Maximum size: 10MB', 'error');
+        return;
+    }
+
+    // Show progress
+    compareProgress.style.display = 'block';
+    compareBtn.disabled = true;
+    compareBtn.style.opacity = '0.6';
+    compareResults.style.display = 'none';
+
+    try {
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('file1', fileA);
+        formData.append('file2', fileB);
+
+        // Send comparison request
+        const response = await fetch(COMPARE_URL, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Comparison failed');
+        }
+
+        const result = await response.json();
+
+        // Display results
+        displayCompareResults(result);
+
+        // Show success message
+        showToast('Documents compared successfully!', 'success');
+
+    } catch (error) {
+        console.error('Compare error:', error);
+        showToast(`Error: ${error.message}`, 'error');
+    } finally {
+        compareProgress.style.display = 'none';
+        compareBtn.disabled = false;
+        compareBtn.style.opacity = '1';
+    }
+}
+
+/**
+ * Display comparison results in the UI
+ * @param {Object} result - Comparison result from API
+ */
+function displayCompareResults(result) {
+    const similarity = result.similarity_percentage || 0;
+
+    // Show results container
+    compareResults.style.display = 'block';
+
+    // Set file names
+    compareResultFileA.textContent = result.file1_name || 'Document A';
+    compareResultFileB.textContent = result.file2_name || 'Document B';
+
+    // Set similarity value
+    compareSimilarityValue.textContent = `${similarity.toFixed(1)}%`;
+
+    // Set badge color based on similarity
+    compareSimilarityBadge.className = 'compare-similarity-badge';
+    if (similarity > 30) {
+        compareSimilarityBadge.classList.add('similarity-high');
+    } else if (similarity >= 10) {
+        compareSimilarityBadge.classList.add('similarity-medium');
+    } else {
+        compareSimilarityBadge.classList.add('similarity-low');
+    }
+
+    // Set verdict
+    compareVerdict.textContent = result.verdict || 'No verdict available';
+    compareVerdict.className = 'compare-verdict';
+    if (similarity > 30) {
+        compareVerdict.classList.add('verdict-high');
+    } else if (similarity >= 10) {
+        compareVerdict.classList.add('verdict-medium');
+    } else {
+        compareVerdict.classList.add('verdict-low');
+    }
+
+    // Display matched blocks
+    const matchedBlocks = result.matched_blocks || [];
+    if (matchedBlocks.length === 0) {
+        compareMatchedBox.innerHTML = `
+            <div class="empty-content">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 4L6 12V24C6 36 15 44 24 44C33 44 42 36 42 24V12L24 4Z" stroke="#94a3b8" stroke-width="2" fill="none"/>
+                    <path d="M16 24L22 30L32 18" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <p>No exact matches found. These documents appear to be original.</p>
+            </div>
+        `;
+    } else {
+        compareMatchedBox.innerHTML = matchedBlocks.map((block, index) => `
+            <div class="matched-block">
+                <div class="matched-block-header">
+                    <span class="matched-block-number">#${index + 1}</span>
+                    <span class="matched-block-length">${block.length} characters</span>
+                </div>
+                <p class="matched-block-text">${escapeHtml(block)}</p>
+            </div>
+        `).join('');
+    }
+}
+
+/**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ========================================
 // Event Listeners
 // ========================================
 
@@ -441,6 +638,19 @@ if (fileInput) {
     });
 }
 
+// Compare file input changes
+if (compareFileA) {
+    compareFileA.addEventListener('change', (e) => {
+        updateCompareFileName(compareFileA, compareFileAName, compareDropA);
+    });
+}
+
+if (compareFileB) {
+    compareFileB.addEventListener('change', (e) => {
+        updateCompareFileName(compareFileB, compareFileBName, compareDropB);
+    });
+}
+
 // Close modal on background click
 if (reportModal) {
     reportModal.addEventListener('click', (e) => {
@@ -465,6 +675,9 @@ window.viewReport = viewReport;
 
 // Close modal function (global)
 window.closeModal = closeModal;
+
+// Compare documents function (global)
+window.compareDocuments = compareDocuments;
 
 // ========================================
 // Initialization

@@ -5,6 +5,7 @@ Academic Integrity Platform - Commercial-Ready SaaS
 
 import os
 import hashlib
+import difflib
 import bcrypt
 from dotenv import load_dotenv
 load_dotenv()
@@ -30,8 +31,8 @@ app = FastAPI(title="Sawa Digital Tech Solutions API", version="3.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Accepts requests from ANY website (Vercel, Netlify, etc.)
-    allow_credentials=False, # MUST be False when using "*"
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,7 +43,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@test.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin12345")
 
-# Use Render's persistent disk for file storage if available
 RENDER_DISK_PATH = "/opt/render/project/src/data"
 if os.path.exists(RENDER_DISK_PATH):
     UPLOAD_FOLDER = os.path.join(RENDER_DISK_PATH, "uploads")
@@ -98,7 +98,6 @@ def seed_admin():
             db.commit()
             print(f"Admin account created: {ADMIN_EMAIL}")
             return
-        # Ensure the existing admin has the correct role/password
         if admin.role != "admin":
             admin.role = "admin"
         if not verify_password(ADMIN_PASSWORD, admin.hashed_password):
@@ -110,7 +109,6 @@ def seed_admin():
         db.close()
 
 def create_default_admin(db: Session):
-    """Create the default admin account if it doesn't already exist."""
     admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()
     if not admin:
         db.add(User(
@@ -133,13 +131,18 @@ class LoginRequest(BaseModel):
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     print("ADMIN LOGIN ATTEMPT:", request.email)
+
     try:
         user = db.query(User).filter(User.email == request.email).first()
         if not user or not verify_password(request.password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
-        return {"message": "Login successful", "access_token": create_access_token(data={"sub": request.email}), "user": user.to_dict()}
+        return {
+            "message": "Login successful", 
+            "access_token": create_access_token(data={"sub": request.email}), 
+            "user": user.to_dict()
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -206,6 +209,92 @@ async def upload_assignment(file: UploadFile = File(...), current_user: User = D
         }
     except HTTPException: raise
     except Exception as e: print("UPLOAD ERROR:", e); raise HTTPException(500, str(e))
+
+@app.post("/api/compare")
+async def compare_documents(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+    """
+    Premium Side-by-Side Document Comparison
+    Compares two uploaded documents and returns similarity percentage,
+    matched blocks, and a verdict.
+    """
+    try:
+        allowed = [".pdf", ".docx", ".doc", ".txt", ".rtf"]
+        ext1 = os.path.splitext(file1.filename)[1].lower()
+        ext2 = os.path.splitext(file2.filename)[1].lower()
+        if ext1 not in allowed: raise HTTPException(400, f"File type for '{file1.filename}' not allowed")
+        if ext2 not in allowed: raise HTTPException(400, f"File type for '{file2.filename}' not allowed")
+
+        # Save both files temporarily
+        sub_id = str(uuid.uuid4())[:8]
+        file1_path = os.path.join(UPLOAD_FOLDER, f"{sub_id}_cmp1_{file1.filename}")
+        file2_path = os.path.join(UPLOAD_FOLDER, f"{sub_id}_cmp2_{file2.filename}")
+        with open(file1_path, "wb") as buffer:
+            shutil.copyfileobj(file1.file, buffer)
+        with open(file2_path, "wb") as buffer:
+            shutil.copyfileobj(file2.file, buffer)
+
+        # Extract text from both documents
+        text1 = extract_text_from_file(file1_path)
+        text2 = extract_text_from_file(file2_path)
+
+        if not text1:
+            raise HTTPException(400, f"Could not extract text from '{file1.filename}'")
+        if not text2:
+            raise HTTPException(400, f"Could not extract text from '{file2.filename}'")
+
+        # Normalize text for fair comparison
+        normalized1 = " ".join(text1.split())
+        normalized2 = " ".join(text2.split())
+
+        # Use difflib.SequenceMatcher to compute similarity
+        matcher = difflib.SequenceMatcher(None, normalized1, normalized2)
+        similarity_percentage = round(matcher.ratio() * 100, 2)
+
+        # Extract exact matching blocks (sentences/paragraphs)
+        matched_blocks = []
+        for block in matcher.get_matching_blocks():
+            if block.size > 0:
+                match_text = normalized1[block.a:block.a + block.size]
+                if len(match_text.strip()) > 10:  # Filter out tiny spurious matches
+                    matched_blocks.append(match_text.strip())
+
+        # Deduplicate while preserving order
+        seen = set()
+        unique_blocks = []
+        for block in matched_blocks:
+            key = block.lower()
+            if key not in seen:
+                seen.add(key)
+                unique_blocks.append(block)
+        matched_blocks = unique_blocks
+
+        # Determine verdict
+        if similarity_percentage > 30:
+            verdict = "High Plagiarism Detected"
+        elif similarity_percentage >= 10:
+            verdict = "Moderate Similarity - Review Required"
+        else:
+            verdict = "Original Work"
+
+        # Clean up temp files
+        try:
+            os.remove(file1_path)
+            os.remove(file2_path)
+        except Exception:
+            pass
+
+        return {
+            "file1_name": file1.filename,
+            "file2_name": file2.filename,
+            "similarity_percentage": similarity_percentage,
+            "matched_blocks": matched_blocks,
+            "verdict": verdict
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("COMPARE ERROR:", e)
+        raise HTTPException(500, str(e))
 
 @app.get("/api/reports")
 def get_reports(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
